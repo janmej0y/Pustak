@@ -7,7 +7,11 @@ import PostForm from "./components/PostForm";
 import SkeletonLoader from "./components/SkeletonLoader";
 import type { Post } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NODE_ENV === "production"
+    ? "/_/backend"
+    : "http://localhost:8000");
 
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
