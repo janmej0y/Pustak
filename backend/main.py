@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import FastAPI, HTTPException, status
@@ -35,6 +36,15 @@ class PostCreate(BaseModel):
 
 class Post(PostCreate):
     id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+seeded_at = utc_now()
 
 
 posts_db: List[Post] = [
@@ -42,16 +52,22 @@ posts_db: List[Post] = [
         id=1,
         title="Welcome to MyPustak",
         body="Share useful book notes, reading reflections, and community updates.",
+        created_at=seeded_at,
+        updated_at=seeded_at,
     ),
     Post(
         id=2,
         title="Why FastAPI feels great",
         body="Typed models, automatic docs, and clear status codes make API work quick and pleasant.",
+        created_at=seeded_at,
+        updated_at=seeded_at,
     ),
     Post(
         id=3,
         title="Next.js App Router",
         body="A clean client experience can still be simple, focused, and easy to reason about.",
+        created_at=seeded_at,
+        updated_at=seeded_at,
     ),
 ]
 
@@ -69,9 +85,39 @@ def get_posts() -> List[Post]:
 
 @app.post("/posts", response_model=Post, status_code=status.HTTP_201_CREATED)
 def create_post(post_data: PostCreate) -> Post:
-    new_post = Post(id=get_next_post_id(), **post_data.model_dump())
+    created_at = utc_now()
+    new_post = Post(
+        id=get_next_post_id(),
+        created_at=created_at,
+        updated_at=created_at,
+        **post_data.model_dump(),
+    )
     posts_db.append(new_post)
     return new_post
+
+
+@app.put("/posts/{post_id}", response_model=Post, status_code=status.HTTP_200_OK)
+def update_post(post_id: int, post_data: PostCreate) -> Post:
+    post_index = next(
+        (index for index, post in enumerate(posts_db) if post.id == post_id),
+        None,
+    )
+
+    if post_index is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Post with id {post_id} was not found.",
+        )
+
+    existing_post = posts_db[post_index]
+    updated_post = Post(
+        id=post_id,
+        created_at=existing_post.created_at,
+        updated_at=utc_now(),
+        **post_data.model_dump(),
+    )
+    posts_db[post_index] = updated_post
+    return updated_post
 
 
 @app.delete("/posts/{post_id}", status_code=status.HTTP_200_OK)
